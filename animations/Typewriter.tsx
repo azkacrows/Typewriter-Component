@@ -1,11 +1,10 @@
 'use client';
 
+import React from 'react';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import gsap from 'gsap';
 
-
 // TYPE DEFINITIONS
-
 
 type TypewriterItem = string | { key: string };
 
@@ -42,11 +41,17 @@ interface TypewriterProps {
     maxHtmlLength?: number;
     // Performance options
     maxCacheSize?: number;
+    // NEW FEATURES
+    newLineIterable?: boolean; // If true, adds new lines instead of deleting
+    initialDelay?: number; // Delay after page load before starting (in seconds)
+    iterableDelay?: number; // Delay between each iterable item when using newLineIterable (in seconds)
+    // TEXT FORMATTING OPTIONS
+    minLineLength?: number; // Minimum line length for consistent spacing (default: 0)
+    paddingChar?: string; // Character to use for padding short lines (default: ' ')
+    normalizeLines?: boolean; // Auto-normalize line lengths in newLineIterable mode (default: false)
 }
 
-
 // HTML SANITIZER IMPLEMENTATION
-
 
 const createSanitizer = (): HtmlSanitizer => {
     const ALLOWED_TAGS = [
@@ -258,9 +263,7 @@ const createSanitizer = (): HtmlSanitizer => {
     return { sanitizeHtml, stripHtmlTags };
 };
 
-
 // HTML PARSER IMPLEMENTATION
-
 
 class HtmlTypewriterParser {
     private cache = new Map<string, ParsedHtml>();
@@ -396,9 +399,7 @@ class HtmlTypewriterParser {
     }
 }
 
-
 // MAIN TYPEWRITER COMPONENT
-
 
 export function Typewriter({
     texts,
@@ -416,16 +417,26 @@ export function Typewriter({
     sanitizeHtml = true,
     maxHtmlLength = 10000,
     maxCacheSize = 50,
+    // NEW FEATURES
+    newLineIterable = false,
+    initialDelay = 0,
+    iterableDelay = 0.5,
+    // TEXT FORMATTING OPTIONS
+    minLineLength = 0,
+    paddingChar = ' ',
+    normalizeLines = false,
 }: TypewriterProps) {
     const [currentText, setCurrentText] = useState<string>('');
     const [currentHtml, setCurrentHtml] = useState<string>('');
     const [isAnimating, setIsAnimating] = useState<boolean>(false);
     const [hasError, setHasError] = useState<boolean>(false);
+    const [allTexts, setAllTexts] = useState<string[]>([]); // Store all typed texts for newLineIterable
 
     const currentTextRef = useRef<string>('');
     const isMountedRef = useRef<boolean>(true);
     const indexRef = useRef<number>(0);
     const animationRef = useRef<gsap.core.Tween | null>(null);
+    const allTextsRef = useRef<string[]>([]);
 
     // Initialize sanitizer and parser with useMemo for performance
     const sanitizer = useMemo<HtmlSanitizer>(() => createSanitizer(), []);
@@ -448,6 +459,11 @@ export function Typewriter({
     useEffect(() => {
         currentTextRef.current = currentText;
     }, [currentText]);
+
+    // Sync allTexts with ref
+    useEffect(() => {
+        allTextsRef.current = allTexts;
+    }, [allTexts]);
 
     // Input validation
     const validateInputs = useCallback((): boolean => {
@@ -476,8 +492,39 @@ export function Typewriter({
             return false;
         }
 
+        if (typeof initialDelay !== 'number' || initialDelay < 0) {
+            handleError(new Error('initialDelay must be a non-negative number'), 'validateInputs');
+            return false;
+        }
+
+        if (typeof iterableDelay !== 'number' || iterableDelay < 0) {
+            handleError(new Error('iterableDelay must be a non-negative number'), 'validateInputs');
+            return false;
+        }
+
+        if (typeof minLineLength !== 'number' || minLineLength < 0) {
+            handleError(new Error('minLineLength must be a non-negative number'), 'validateInputs');
+            return false;
+        }
+
+        if (typeof paddingChar !== 'string') {
+            handleError(new Error('paddingChar must be a string'), 'validateInputs');
+            return false;
+        }
+
         return true;
-    }, [texts, typeSpeed, deleteSpeed, delayBetween, maxHtmlLength, handleError]);
+    }, [
+        texts,
+        typeSpeed,
+        deleteSpeed,
+        delayBetween,
+        maxHtmlLength,
+        initialDelay,
+        iterableDelay,
+        minLineLength,
+        paddingChar,
+        handleError,
+    ]);
 
     // Resolve text with error handling
     const resolveText = useCallback(
@@ -504,6 +551,48 @@ export function Typewriter({
         [translateFn, handleError]
     );
 
+    // Normalize and format text for consistent display
+    const normalizeText = useCallback(
+        (text: string): string => {
+            try {
+                if (!newLineIterable || !normalizeLines) {
+                    return text;
+                }
+
+                // Get plain text length (strip HTML if present)
+                const plainText = enableHtml ? sanitizer.stripHtmlTags(text) : text;
+                const textLength = plainText.length;
+
+                // If text is shorter than minLineLength, pad it
+                if (textLength < minLineLength) {
+                    const paddingNeeded = minLineLength - textLength;
+                    const padding = paddingChar.repeat(paddingNeeded);
+
+                    if (enableHtml) {
+                        // For HTML, add padding as span to preserve styling
+                        return text + `<span style="opacity: 0;">${padding}</span>`;
+                    } else {
+                        // For plain text, just add padding
+                        return text + padding;
+                    }
+                }
+
+                return text;
+            } catch (error) {
+                handleError(error as Error, 'normalizeText');
+                return text;
+            }
+        },
+        [
+            newLineIterable,
+            normalizeLines,
+            minLineLength,
+            paddingChar,
+            enableHtml,
+            sanitizer,
+            handleError,
+        ]
+    );
     // Process and validate HTML content
     const processHtmlContent = useCallback(
         (rawHtml: string): { html: string; plainText: string } => {
@@ -557,9 +646,9 @@ export function Typewriter({
         }
     }, [handleError]);
 
-    // Type animation with proper error handling
+    // Type animation with proper error handling and newLineIterable support
     const type = useCallback(
-        (text: string, onCompleteCallback: () => void) => {
+        (text: string, onCompleteCallback: () => void, isNewLineMode: boolean = false) => {
             if (!isMountedRef.current) return;
 
             try {
@@ -570,21 +659,33 @@ export function Typewriter({
                 const totalLength = plainText.length;
                 let i = 0;
 
+                // Get the prefix for new line mode
+                const getPrefix = () => {
+                    if (!isNewLineMode) return '';
+                    return allTextsRef.current.length > 0
+                        ? allTextsRef.current.join('\n') + '\n'
+                        : '';
+                };
+
                 const typeNext = () => {
                     if (!isMountedRef.current) return;
 
                     try {
+                        const prefix = getPrefix();
+
                         if (enableHtml) {
                             const htmlSubstring = parser.getHtmlUpToPosition(html, i + 1);
                             const plainSubstring = plainText.slice(0, i + 1);
+                            const fullText = prefix + plainSubstring;
 
-                            setCurrentHtml(htmlSubstring);
-                            setCurrentText(plainSubstring);
-                            onTextChange?.(plainSubstring, indexRef.current);
+                            setCurrentHtml(isNewLineMode ? prefix + htmlSubstring : htmlSubstring);
+                            setCurrentText(fullText);
+                            onTextChange?.(fullText, indexRef.current);
                         } else {
                             const newText = text.slice(0, i + 1);
-                            setCurrentText(newText);
-                            onTextChange?.(newText, indexRef.current);
+                            const fullText = prefix + newText;
+                            setCurrentText(fullText);
+                            onTextChange?.(fullText, indexRef.current);
                         }
 
                         i++;
@@ -592,8 +693,13 @@ export function Typewriter({
                         if (i <= totalLength) {
                             animationRef.current = gsap.delayedCall(typeSpeed, typeNext);
                         } else {
+                            // In newLineIterable mode, add the completed text to allTexts
+                            if (isNewLineMode) {
+                                setAllTexts((prev) => [...prev, plainText]);
+                            }
+
                             animationRef.current = gsap.delayedCall(
-                                delayBetween,
+                                isNewLineMode ? iterableDelay : delayBetween,
                                 onCompleteCallback
                             );
                         }
@@ -609,7 +715,16 @@ export function Typewriter({
                 onCompleteCallback();
             }
         },
-        [typeSpeed, delayBetween, onTextChange, enableHtml, processHtmlContent, parser, handleError]
+        [
+            typeSpeed,
+            delayBetween,
+            iterableDelay,
+            onTextChange,
+            enableHtml,
+            processHtmlContent,
+            parser,
+            handleError,
+        ]
     );
 
     // Erase animation with error handling
@@ -667,7 +782,7 @@ export function Typewriter({
         [deleteSpeed, enableHtml, sanitizer, processHtmlContent, parser, handleError]
     );
 
-    // Main animation loop with comprehensive error handling
+    // Main animation loop with comprehensive error handling and newLineIterable support
     const startAnimation = useCallback(() => {
         if (!texts.length || !isMountedRef.current) return;
 
@@ -695,41 +810,92 @@ export function Typewriter({
                     }
 
                     const displayText = resolveText(item);
+                    const normalizedText = normalizeText(displayText);
 
-                    type(displayText, () => {
-                        if (!isMountedRef.current) return;
-
-                        if (!loop && indexRef.current === texts.length - 1) {
-                            setIsAnimating(false);
-                            onComplete?.();
-                            return;
-                        }
-
-                        erase(() => {
+                    type(
+                        normalizedText,
+                        () => {
                             if (!isMountedRef.current) return;
 
-                            indexRef.current = (indexRef.current + 1) % texts.length;
+                            // Check if we've reached the end
+                            const isLastItem = indexRef.current === texts.length - 1;
 
-                            if (loop || indexRef.current > 0) {
-                                runCycle();
-                            } else {
+                            if (!loop && isLastItem) {
                                 setIsAnimating(false);
                                 onComplete?.();
+                                return;
                             }
-                        });
-                    });
+
+                            if (newLineIterable) {
+                                // In newLineIterable mode, just move to next without erasing
+                                indexRef.current = indexRef.current + 1;
+
+                                // Continue if looping or not at the end
+                                if (loop) {
+                                    // Reset index if we've gone through all texts in loop mode
+                                    if (indexRef.current >= texts.length) {
+                                        indexRef.current = 0;
+                                    }
+                                    runCycle();
+                                } else if (indexRef.current < texts.length) {
+                                    runCycle();
+                                } else {
+                                    setIsAnimating(false);
+                                    onComplete?.();
+                                }
+                            } else {
+                                // Original behavior with erasing
+                                erase(() => {
+                                    if (!isMountedRef.current) return;
+
+                                    indexRef.current = indexRef.current + 1;
+
+                                    if (loop) {
+                                        // Reset index if we've gone through all texts in loop mode
+                                        if (indexRef.current >= texts.length) {
+                                            indexRef.current = 0;
+                                        }
+                                        runCycle();
+                                    } else if (indexRef.current < texts.length) {
+                                        runCycle();
+                                    } else {
+                                        setIsAnimating(false);
+                                        onComplete?.();
+                                    }
+                                });
+                            }
+                        },
+                        newLineIterable
+                    );
                 } catch (error) {
                     handleError(error as Error, 'runCycle');
                     setIsAnimating(false);
                 }
             };
 
-            runCycle();
+            // Apply initial delay
+            if (initialDelay > 0) {
+                animationRef.current = gsap.delayedCall(initialDelay, runCycle);
+            } else {
+                runCycle();
+            }
         } catch (error) {
             handleError(error as Error, 'startAnimation');
             setIsAnimating(false);
         }
-    }, [texts, loop, resolveText, type, erase, onComplete, handleError, validateInputs]);
+    }, [
+        texts,
+        loop,
+        newLineIterable,
+        initialDelay,
+        normalizeText,
+        resolveText,
+        type,
+        erase,
+        onComplete,
+        handleError,
+        validateInputs,
+    ]);
 
     // Main effect for initialization and cleanup
     useEffect(() => {
@@ -741,6 +907,7 @@ export function Typewriter({
         indexRef.current = 0;
         setCurrentText('');
         setCurrentHtml('');
+        setAllTexts([]);
 
         killAnimations();
 
@@ -756,9 +923,21 @@ export function Typewriter({
             isMountedRef.current = false;
             indexRef.current = 0;
             setIsAnimating(false);
+            setAllTexts([]);
             killAnimations();
         };
-    }, [texts, typeSpeed, deleteSpeed, delayBetween, loop, startAnimation, killAnimations]);
+    }, [
+        texts,
+        typeSpeed,
+        deleteSpeed,
+        delayBetween,
+        loop,
+        newLineIterable,
+        initialDelay,
+        iterableDelay,
+        startAnimation,
+        killAnimations,
+    ]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -783,29 +962,61 @@ export function Typewriter({
         );
     }
 
-    // Render HTML or plain text
+    // Render HTML or plain text with proper cursor positioning for newLineIterable
+    const cursorClass = cursor ? 'typewriter-cursor' : '';
+    const finalClassName = `${className} ${cursorClass}`;
+
     if (enableHtml) {
         return (
             <span
-                className={`${className} ${cursor ? 'typewriter-cursor' : ''}`}
+                className={finalClassName}
                 role="text"
                 aria-live="polite"
                 aria-label={loop ? 'Animated text loop' : 'Animated text sequence'}
                 data-testid="typewriter"
                 data-is-animating={isAnimating}
+                data-newline-iterable={newLineIterable}
                 dangerouslySetInnerHTML={{ __html: currentHtml }}
             />
         );
     }
 
+    // For newLineIterable mode, we need to handle line breaks properly
+    if (newLineIterable) {
+        const lines = currentText.split('\n');
+        return (
+            <span
+                className={finalClassName}
+                role="text"
+                aria-live="polite"
+                aria-label={loop ? 'Animated text loop' : 'Animated text sequence'}
+                data-testid="typewriter"
+                data-is-animating={isAnimating}
+                data-newline-iterable={newLineIterable}
+                style={{ whiteSpace: 'pre-line' }}
+            >
+                {lines.map((line, index) => (
+                    <React.Fragment key={`line-${index}`}>
+                        {line}
+                        {index < lines.length - 1 && <br />}
+
+                        {/* fix this later */}
+                        {index === lines.length - 1 && cursor && isAnimating}
+                    </React.Fragment>
+                ))}
+            </span>
+        );
+    }
+
     return (
         <span
-            className={`${className} ${cursor ? 'typewriter-cursor' : ''}`}
+            className={finalClassName}
             role="text"
             aria-live="polite"
             aria-label={loop ? 'Animated text loop' : 'Animated text sequence'}
             data-testid="typewriter"
             data-is-animating={isAnimating}
+            data-newline-iterable={newLineIterable}
         >
             {currentText}
         </span>

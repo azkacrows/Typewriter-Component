@@ -2,39 +2,6 @@
 
 > At first I was bored and made a typewriter effect, but as time went on I wanted to add other features like internationalization and finally I wanted to be able to style the text in this component. This was built to continue learning TypeScript without any AI assistance except for building the documentation - this take 2 days and a lot of trial and error.
 
-## ✅ Production-Ready Features
-
-### **Security** (Built-in Protection)
-
--   **XSS Prevention**: HTML sanitization with allowlist approach
--   **Content Validation**: Whitelist for HTML tags, attributes, and CSS properties
--   **Tailwind Class Validation**: Regex patterns for safe CSS classes
--   **Input Sanitization**: Automatic cleanup of potentially dangerous content
--   **Length Limits**: Configurable content length restrictions
-
-### **Performance** (Optimized)
-
--   **Memory Management**: Automatic cache cleanup with size limits
--   **Efficient Parsing**: Single-pass HTML parser
--   **GSAP Integration**: Hardware-accelerated animations
--   **Smart Processing**: Processes content as needed
-
-### **Reliability** (Error Handling)
-
--   **Comprehensive Error Handling**: Try-catch blocks with graceful fallbacks
--   **Input Validation**: Validates props and content before processing
--   **Memory Leak Prevention**: Proper cleanup of timers, refs, and animations
--   **Mount State Protection**: Guards prevent state updates on unmounted components
--   **Fallback Mechanisms**: Degrades to plain text if HTML processing fails
-
-### **Maintainability** (Developer-friendly)
-
--   **TypeScript**: Full type safety with comprehensive interfaces
--   **Error Callbacks**: Built-in error reporting capability
--   **Debugging Support**: Data attributes and console logging
--   **Clean Architecture**: Separated concerns (parsing, sanitization, animation)
--   **Documentation**: Comprehensive JSDoc comments
-
 ## 🏢 Production-Ready Checklist
 
 | Feature             | Status | Notes                                    |
@@ -48,15 +15,63 @@
 | **Monitoring**      | ✅     | Error callbacks for tracking             |
 | **Memory Safety**   | ✅     | Proper cleanup, no leaks                 |
 | **Browser Support** | ✅     | Modern browsers with ES6+ support        |
-| **Bundle Size**     | ✅     | Tree-shakeable, minimal dependencies     |
+| **🆕 Multi-mode**   | ✅     | Traditional + NewLine modes              |
+| **🆕 Loop Safety**  | ✅     | Fixed infinite loop bugs                 |
 
-## 📊 Technical Implementation
+## 📖 General Parameters
 
-```typescript
-// Key features implemented:
-// - Hardware-accelerated animations via GSAP
-// - Comprehensive error handling and fallbacks
-```
+| Prop          | Type                                             | Default      | Description                                                                               |
+| ------------- | ------------------------------------------------ | ------------ | ----------------------------------------------------------------------------------------- |
+| **texts**     | `TypewriterItem[]` (string or `{ key: string }`) | **required** | The sequence of textual elements to animate. Accepts either raw strings or keyed objects. |
+| **className** | `string`                                         | `''`         | An optional CSS class applied to the container `<span>` for targeted styling.             |
+| **cursor**    | `boolean`                                        | `false`      | If enabled, appends a blinking cursor to the terminal position of the rendered string.    |
+| **loop**      | `boolean`                                        | `false`      | If enabled, perpetually cycles through the full set of texts in succession.               |
+
+---
+
+# Temporal and Kinetic Controls
+
+| Prop              | Type     | Default | Description                                                                                                      |
+| ----------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| **typeSpeed**     | `number` | `0.1`   | Specifies the interval, in seconds per character, for text construction. The value must be strictly positive.    |
+| **deleteSpeed**   | `number` | `0.05`  | Specifies the interval, in seconds per character, for text deletion. The value must be strictly positive.        |
+| **delayBetween**  | `number` | `1`     | Governs the interstitial pause (in seconds) after a sequence is typed before its deletion or progression.        |
+| **initialDelay**  | `number` | `0`     | Establishes an onset latency (in seconds) before the first animation commences. Must be nonnegative.             |
+| **iterableDelay** | `number` | `0.5`   | Determines the temporal spacing (in seconds) between successive lines under `newLineIterable` mode. Nonnegative. |
+
+---
+
+# Event-Driven Callbacks
+
+| Prop             | Type                                    | Default     | Description                                                                                      |
+| ---------------- | --------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| **onComplete**   | `() => void`                            | `undefined` | Invoked precisely once when all texts have been rendered (operative only if `loop` is disabled). |
+| **onTextChange** | `(text: string, index: number) => void` | `undefined` | Executed whenever the visible string transitions, with arguments for the content and index.      |
+| **onError**      | `(error: Error) => void`                | `undefined` | Activated upon error detection within the animation process, returning the error object.         |
+
+---
+
+# HTML Rendering and Safety Protocols
+
+| Prop              | Type      | Default | Description                                                                                   |
+| ----------------- | --------- | ------- | --------------------------------------------------------------------------------------------- |
+| **enableHtml**    | `boolean` | `false` | Permits the embedding and rendering of raw HTML tags within the animated text sequence.       |
+| **sanitizeHtml**  | `boolean` | `true`  | Implements sanitization to preclude injection of unsafe or malicious HTML constructs.         |
+| **maxHtmlLength** | `number`  | `10000` | Imposes an upper bound (in characters) on the permissible size of an HTML fragment.           |
+| **maxCacheSize**  | `number`  | `50`    | Defines the maximum capacity of the internal cache utilized for storing parsed HTML entities. |
+
+---
+
+# Line Management Parameters
+
+| Prop                | Type      | Default | Description                                                                                                         |
+| ------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| **newLineIterable** | `boolean` | `false` | If enabled, appends successive texts as new lines rather than overwriting the existing content.                     |
+| **minLineLength**   | `number`  | `0`     | Ensures each rendered line attains a specified minimum length, achieved by appending padding characters as needed.  |
+| **paddingChar**     | `string`  | `' '`   | Determines the padding character to be inserted when enforcing `minLineLength`.                                     |
+| **normalizeLines**  | `boolean` | `false` | If enabled, automatically normalizes all lines to identical length (effective only with `newLineIterable` enabled). |
+
+---
 
 ## 🚀 Deployment Recommendations
 
@@ -97,6 +112,29 @@
 />
 ```
 
+### **For Real-Time Applications:**
+
+```jsx
+<Typewriter
+    texts={liveMessages}
+    newLineIterable={true}
+    initialDelay={0}
+    iterableDelay={0.3}
+    typeSpeed={0.02}
+    cursor={true}
+    onTextChange={(text, index) => {
+        // Send analytics for each message completion
+        analytics.track('message_displayed', { index, content: text });
+    }}
+    onError={(error) => {
+        errorTracking.captureException(error, {
+            context: 'realtime_typewriter',
+            mode: 'newLineIterable',
+        });
+    }}
+/>
+```
+
 ## ⚠️ Implementation Notes
 
 ### **Bundle Size:**
@@ -107,7 +145,6 @@
 ### **Browser Support:**
 
 -   **Modern browsers**: Full ES6+ support required
--   **Mobile**: Full support with touch considerations
 -   **Legacy**: May need polyfills for Map/Set in older browsers
 
 ### **Content Limitations:**
@@ -184,36 +221,25 @@ export default function SingleTextExample() {
 export default function CodeExample() {
     const codeTexts = [
         `<span class="text-green-400 italic">// 404 page not found.</span>`,
-        `<div>
-      <span class="text-purple-400 font-semibold">if</span>
-      <span class="text-gray-300"> (</span>
-      <span class="text-orange-400">!</span>
-      <span class="text-blue-300 italic">found</span>
-      <span class="text-gray-300">) {</span>
-    </div>`,
-        `<div>
-      <span class="pl-4 text-purple-400 font-semibold">throw</span>
-      <span class="text-gray-300"> (</span>
-      <span class="text-yellow-300">"(╯°□°)╯︵ ┻━┻"</span>
-      <span class="text-gray-300">);</span>
-    </div>`,
-        `<div class="text-gray-300">}</div>`,
-        `<div class="text-green-400 italic">
-      // <a href="/" class="text-blue-400 underline hover:text-blue-300">Go home!</a>
-    </div>`,
+        `<span class="text-purple-400 font-semibold">if</span><span class="text-gray-300"> (</span><span class="text-orange-400">!</span><span class="text-blue-300 italic">found</span><span class="text-gray-300">) {</span>`,
+        `<span class="pl-8 text-purple-400 font-semibold">throw</span><span class="text-gray-300"> (</span><span class="text-yellow-300">"(╯°□°)╯︵ ┻━┻"</span><span class="text-gray-300">);</span>`,
+        `<span class="text-gray-300">}</span>`,
+        `<span class="text-green-400 italic">// <a href="/" class="text-blue-400 underline hover:text-blue-300">Go home!</a></span>`,
     ];
 
     return (
         <div className="bg-gray-900 p-6 rounded-lg font-mono">
             <Typewriter
                 texts={codeTexts}
+                newLineIterable={true}
                 enableHtml={true}
                 sanitizeHtml={true}
                 typeSpeed={0.05}
                 deleteSpeed={0.02}
                 delayBetween={2}
-                loop={true}
-                className="text-base leading-relaxed"
+                iterableDelay={0.8}
+                loop={false}
+                className="text-base leading-relaxed block whitespace-pre-line"
             />
         </div>
     );
@@ -657,11 +683,31 @@ Add the required CSS to your global stylesheet or component:
     }
 }
 
+/* Error state styling */
 .typewriter-error {
     color: #ef4444;
     font-style: italic;
     opacity: 0.8;
 }
+
+/* 🆕 NEW: Better line spacing for multi-line mode */
+[data-newline-iterable='true'] {
+    white-space: pre-line;
+    line-height: 1.6;
+}
+
+/* Optional: Custom cursor variations */
+.custom-cursor::after {
+    content: '█'; /* Block cursor */
+    animation: typewriter-blink 1s steps(1) infinite;
+    margin-left: 2px;
+    color: currentColor;
+}
+
+.custom-cursor-underscore::after {
+    content: '_'; /* Underscore cursor */
+    animation: typewriter-blink 1s steps(1) infinite;
+
 ```
 
 ---
@@ -673,7 +719,7 @@ interface TypewriterProps {
     texts: (string | { key: string })[];
     typeSpeed?: number; // Animation speed for typing (default: 0.1)
     deleteSpeed?: number; // Animation speed for deleting (default: 0.05)
-    delayBetween?: number; // Delay between text changes (default: 1)
+    delayBetween?: number; // Delay between text changes in traditional mode (default: 1)
     loop?: boolean; // Whether to loop through texts (default: false)
     cursor?: boolean; // Show blinking cursor (default: false)
     className?: string; // CSS classes to apply
@@ -685,6 +731,16 @@ interface TypewriterProps {
     onTextChange?: (text: string, index: number) => void; // Callback on text change
     onError?: (error: Error) => void; // Error handling callback
     maxCacheSize?: number; // Maximum cache size for parsed HTML (default: 50)
+
+    // 🆕 NEW PROPS
+    newLineIterable?: boolean; // Add new lines instead of deleting (default: false)
+    initialDelay?: number; // Delay in seconds before starting animation (default: 0)
+    iterableDelay?: number; // Delay in seconds between lines in newLineIterable mode (default: 0.5)
+
+    // 🆕 TEXT FORMATTING PROPS
+    normalizeLines?: boolean; // Auto-normalize line lengths in newLineIterable mode (default: false)
+    minLineLength?: number; // Minimum line length for consistent spacing (default: 0)
+    paddingChar?: string; // Character to use for padding short lines (default: ' ')
 }
 ```
 
@@ -700,6 +756,12 @@ interface TypewriterProps {
 -   Implement `onError` callback for production monitoring
 -   Use translation keys for internationalized applications
 -   Test with various content sizes and complexity
+-   Use `newLineIterable` for chat interfaces, tutorials, and step-by-step content
+-   Set reasonable `iterableDelay` (0.5-2 seconds) for good UX
+-   Use `initialDelay` to create anticipation or wait for page load
+-   Position cursor at the end of active lines with `cursor={true}`
+-   Use `normalizeLines={true}` with `minLineLength` for mixed text lengths
+-   Choose appropriate `paddingChar` (' ' for invisible, '.' for visible)
 
 ❌ **DON'T:**
 
@@ -708,6 +770,9 @@ interface TypewriterProps {
 -   Put excessive content in a single text item
 -   Forget error handling in production environments
 -   Use overly complex nested HTML structures
+-   Use extremely short `iterableDelay` (<0.2s) - creates rushed feeling
+-   Forget to handle the `onComplete` callback for user interactions
+-   Use visible `paddingChar` unless intentionally showing padding
 
 🔧 **Performance Tips:**
 
@@ -715,6 +780,10 @@ interface TypewriterProps {
 -   Consider disabling loop for very long content
 -   Monitor performance with `onError` callback
 -   Use reasonable `maxHtmlLength` limits
+-   Use `newLineIterable={false}` (traditional mode) for simple text cycling
+-   Use `newLineIterable={true}` for content that should accumulate
+-   Monitor memory usage with large text arrays (>50 items)
+-   Implement proper error handling for production apps
 
 🛡️ **Security Tips:**
 
@@ -723,4 +792,40 @@ interface TypewriterProps {
 -   Consider implementing Content Security Policy (CSP) headers
 -   Monitor errors for potential security issues
 
+### **Accessibility Improvements**
+
+-   The component now has better ARIA support for multi-line content
+-   Screen readers handle the new line mode more gracefully
+-   Proper semantic HTML structure is maintained
+
+## 🐛 Known Issues Fixed
+
+| Issue                               | Status       | Fix Description                               |
+| ----------------------------------- | ------------ | --------------------------------------------- |
+| Infinite loop in certain conditions | ✅ **FIXED** | Improved index boundary checking              |
+| Memory leaks with rapid re-mounts   | ✅ **FIXED** | Enhanced cleanup in useEffect                 |
+| React key warnings in console       | ✅ **FIXED** | Better key generation for mapped elements     |
+| Cursor positioning in HTML mode     | ✅ **FIXED** | Improved cursor placement logic               |
+| Loop logic inconsistencies          | ✅ **FIXED** | Simplified and more predictable loop behavior |
+| TypeScript type inference issues    | ✅ **FIXED** | Enhanced type definitions                     |
+
 **Bottom line**: This component is production-ready with robust error handling, security features, and performance optimizations. It's suitable for professional applications that need reliable animated text with HTML support.
+
+## 🤝 Contributing
+
+The development of this project is conceived as an open, collaborative endeavor, and contributions from the scholarly and professional community are strongly encouraged. In order to maintain the rigor and coherence of the codebase, contributors are asked to adhere to the following protocol:
+
+1. **Repository Forking**: Initiate your contribution by forking the repository and creating a distinct branch from the `main` branch.
+2. **Commit Discipline**: Ensure that all modifications are accompanied by precise and analytically descriptive commit messages that capture both the intent and the technical nuance of the change.
+3. **Adherence to Standards**: Maintain fidelity to established coding conventions, architectural principles, and stylistic norms to promote uniformity and long-term maintainability.
+4. **Pull Request Submission**: Submit a pull request (PR) that provides a substantive and well-structured exegesis of the proposed changes, including rationale, scope, and implications.
+
+Scholarly engagement in the form of theoretical insights, identification of latent defects, or the proposition of new research-informed features is deeply valued. Prospective contributors are invited to open an **issue** to engage in discursive evaluation of significant modifications prior to the submission of a PR.
+
+---
+
+## 📜 License
+
+This project is disseminated under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+The license confers upon the user the rights to employ, adapt, and redistribute the software, contingent upon strict adherence to the provisions articulated within the GNU GPL-3.0 framework. For comprehensive legal and philosophical exposition, please consult the [LICENSE](./LICENSE) file.
