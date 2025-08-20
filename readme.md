@@ -8,7 +8,7 @@
 
 | Feature             | Status | Notes                                    |
 | ------------------- | ------ | ---------------------------------------- |
-| **Security**        | ✅     | XSS prevention, content sanitization     |
+| ****        | ✅     | XSS prevention, content sanitization     |
 | **Performance**     | ✅     | Caching, memory management, optimization |
 | **Error Handling**  | ✅     | Comprehensive error recovery             |
 | **Accessibility**   | ✅     | ARIA attributes, screen reader support   |
@@ -154,14 +154,6 @@
 -   **Max content length**: Configurable via `maxHtmlLength` prop
 -   **HTML nesting**: Supports reasonable nesting levels
 -   **Animation performance**: Depends on content complexity and browser
-
-## 🔒 Security Features:
-
--   **XSS Prevention** through HTML sanitization
--   **Content filtering** with tag and attribute allowlists
--   **Safe CSS** through property and class validation
--   **Input validation** for all props and content
--   **Error boundaries** prevent crashes from malicious content
 
 ## Basic Usage Examples
 
