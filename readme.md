@@ -2,7 +2,9 @@
 
 > At first I was bored and made a typewriter effect, but as time went on I wanted to add other features like internationalization and finally I wanted to be able to style the text in this component. This was built to continue learning TypeScript without any AI assistance except for building the documentation - this take 2 days and a lot of trial and error.
 
-## 🏢 Production-Ready Checklist
+## 🏢 Learning-Oriented Production Checklist
+
+> This component was created as part of my journey learning TypeScript. I tried to include features and considerations that are usually important in production software. While not all items have been tested at scale, the goal was to practice implementing them as realistically as possible.
 
 | Feature             | Status | Notes                                    |
 | ------------------- | ------ | ---------------------------------------- |
@@ -809,7 +811,7 @@ interface TypewriterProps {
 | Loop logic inconsistencies          | ✅ **FIXED** | Simplified and more predictable loop behavior |
 | TypeScript type inference issues    | ✅ **FIXED** | Enhanced type definitions                     |
 
-**Bottom line**: This component is production-ready with robust error handling, security features, and performance optimizations. It's suitable for professional applications that need reliable animated text with HTML support.
+**Bottom line**: This component was built as part of my TypeScript learning journey. It includes several features inspired by production-ready software, such as error handling, security considerations, and performance optimizations. While it may not yet be fully tested for professional use, it can serve as a solid starting point for projects that need animated text with HTML support.
 
 ## 🤝 Contributing
 
