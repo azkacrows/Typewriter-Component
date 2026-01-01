@@ -1,6 +1,6 @@
 # Typewriter Component
 
-> At first I was bored and made a typewriter effect, but as time went on I wanted to add other features like internationalization and finally I wanted to be able to style the text in this component. This was built to continue learning TypeScript without any AI assistance except for building the documentation - this take 2 days and a lot of trial and error.
+> At first I was bored and made a typewriter effect, but as time went on I wanted to add other features like internationalization and finally I wanted to be able to style the text in this component. This was built as part of my TypeScript learning journey over a couple of days with a lot of trial and error.
 
 ## 🏢 Learning-Oriented Production Checklist
 
@@ -8,9 +8,9 @@
 
 | Feature             | Status | Notes                                    |
 | ------------------- | ------ | ---------------------------------------- |
-| ****        | ✅     | XSS prevention, content sanitization     |
+| **Security**        | ✅     | XSS prevention, HTML sanitization        |
 | **Performance**     | ✅     | Caching, memory management, optimization |
-| **Error Handling**  | ✅     | Comprehensive error recovery             |
+| **Error Handling**  | ✅     | Error reporting and basic recovery       |
 | **Accessibility**   | ✅     | ARIA attributes, screen reader support   |
 | **TypeScript**      | ✅     | Full type safety                         |
 | **Testing Ready**   | ✅     | Data attributes for testing              |
@@ -19,6 +19,8 @@
 | **Browser Support** | ✅     | Modern browsers with ES6+ support        |
 | **🆕 Multi-mode**   | ✅     | Traditional + NewLine modes              |
 | **🆕 Loop Safety**  | ✅     | Fixed infinite loop bugs                 |
+
+---
 
 ## 📖 General Parameters
 
@@ -539,7 +541,7 @@ export default function NoCursorExample() {
 Add these styles to your global CSS file:
 
 ```css
-/* Cursor animation for typewriter effect */
+/* Required: Add this to your global.css or equivalent */
 .typewriter-cursor::after {
     content: '|';
     animation: typewriter-blink 1s steps(1) infinite;
@@ -560,24 +562,27 @@ Add these styles to your global CSS file:
 
 /* Error state styling */
 .typewriter-error {
-    color: #ef4444; /* Red color for error state */
+    color: #ef4444;
     font-style: italic;
     opacity: 0.8;
 }
 
-/* Optional: Custom cursor variations */
+[data-newline-iterable='true'] {
+    white-space: pre-line;
+    line-height: 1.6;
+}
+
 .custom-cursor::after {
-    content: '█'; /* Block cursor */
+    content: '█';
     animation: typewriter-blink 1s steps(1) infinite;
     margin-left: 2px;
     color: currentColor;
 }
 
 .custom-cursor-underscore::after {
-    content: '_'; /* Underscore cursor */
+    content: '_'; 
     animation: typewriter-blink 1s steps(1) infinite;
-    color: currentColor;
-}
+
 ```
 
 ```tsx
@@ -651,57 +656,6 @@ export default function ErrorStateExample() {
 npm install gsap
 # or
 yarn add gsap
-```
-
-### 7.2 CSS Setup
-
-Add the required CSS to your global stylesheet or component:
-
-```css
-/* Required: Add this to your global.css or equivalent */
-.typewriter-cursor::after {
-    content: '|';
-    animation: typewriter-blink 1s steps(1) infinite;
-    margin-left: 2px;
-    color: currentColor;
-}
-
-@keyframes typewriter-blink {
-    0%,
-    50% {
-        opacity: 1;
-    }
-    50.01%,
-    100% {
-        opacity: 0;
-    }
-}
-
-/* Error state styling */
-.typewriter-error {
-    color: #ef4444;
-    font-style: italic;
-    opacity: 0.8;
-}
-
-/* 🆕 NEW: Better line spacing for multi-line mode */
-[data-newline-iterable='true'] {
-    white-space: pre-line;
-    line-height: 1.6;
-}
-
-/* Optional: Custom cursor variations */
-.custom-cursor::after {
-    content: '█'; /* Block cursor */
-    animation: typewriter-blink 1s steps(1) infinite;
-    margin-left: 2px;
-    color: currentColor;
-}
-
-.custom-cursor-underscore::after {
-    content: '_'; /* Underscore cursor */
-    animation: typewriter-blink 1s steps(1) infinite;
-
 ```
 
 ---
